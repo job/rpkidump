@@ -1,9 +1,10 @@
 #	$OpenBSD: Makefile,v 1.10 2019/05/08 21:30:11 benno Exp $
 
-.PATH:	$.CURDIR}../../usr.sbin/rpki-client
+.PATH:	${.CURDIR}/../../usr.sbin/rpki-client
 
 PROG=	rpkidump
-SRCS=	rpkidump.c print.c mft.c
+SRCS=	rpkidump.c print.c \
+	as.c cert.c cms.c io.c ip.c log.c mft.c roa.c x509.c
 
 LDADD+= -lcrypto -lm
 DPADD+= ${LIBCRYPTO} ${LIBM}

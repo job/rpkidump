@@ -1,4 +1,4 @@
-/*	$Id: test-mft.c,v 1.8 2020/11/03 21:16:32 tb Exp $ */
+/*	$Id: rpkidump.c,v 1.8 2020/11/16 21:16:32 job Exp $ */
 /*
  * Copyright (c) 2020 Job Snijders <job@openbsd.org>
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
@@ -16,13 +16,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/types.h>
-#include <netinet/in.h>
 #include <arpa/nameser.h>
 #include <assert.h>
 #include <err.h>
-#include <stdio.h>
+#include <netinet/in.h>
+#include <sys/types.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -35,16 +35,21 @@
 #include "extern.h"
 #include "rpkidump.h"
 
+int verbose;
+
 int
 main(int argc, char *argv[])
 {
+	BIO		*bio_out = NULL;
 	char		*ft;
 	int		 ch;
-	struct mft	*p;
-	BIO		*bio_out = NULL;
+	FILE		*o_in;
+	struct mft	*m;
+	struct roa	*r;
+	struct cert	*c;
 	X509		*xp = NULL;
 
-	if (pledge("stdio rpath", NULL) == -1)
+	if (pledge("stdio rpath exec proc", NULL) == -1)
 		err(1, "pledge");
 
 	while ((ch = getopt(argc, argv, "")) != -1) {
@@ -63,26 +68,51 @@ main(int argc, char *argv[])
 	OpenSSL_add_all_ciphers();
 	OpenSSL_add_all_digests();
 
-	if ((bio_out = BIO_new_fp(stdout, BIO_NOCLOSE)) == NULL)
-		errx(1, "BIO_new_fp");
-
 	if ((ft = strrchr(argv[0], '.')) == NULL)
-		errx(1, "unknown filetype");
+		errx(1, "unknown RPKI file type or extension");
 
 	/* manifest */
 	if (strcmp(ft, ".mft") == 0) {
-		if ((p = mft_parse(&xp, argv[0])) == NULL) {
-			mft_print(p);
-			if (!PEM_write_bio_X509(bio_out, xp))
-				errx(1, "PEM_write_bio_X509: unable to write cert");
-			mft_free(p);
-			X509_free(xp);
+		if ((m = mft_parse(&xp, argv[0])) == 0) {
+			errx(1, "mft_parse()");
+		} else {
+			mft_print(m);
+			printf("\n--\n");
+			mft_free(m);
 		}
-	} else {
-		errx(1, "geen idee");
+	} else if (strcmp(ft, ".roa") == 0) {
+		if ((r = roa_parse(&xp, argv[0], NULL)) == 0) {
+			errx(1, "roa_parse()");
+		} else {
+			roa_print(r);
+			printf("\n--\n");
+			roa_free(r);
+		}
+	} else if (strcmp(ft, ".cer") == 0) {
+		if ((c = cert_parse(&xp, argv[0], NULL)) == 0) {
+			errx(1, "cert_parse()");
+		} else {
+			cert_print(c);
+			printf("\n--\n");
+			cert_free(c);
+		}
 	}
 
+	fflush(stdout);
+
+	o_in = popen("openssl x509 -text", "w");
+
+	if ((bio_out = BIO_new_fp(o_in, BIO_NOCLOSE)) == NULL)
+		errx(1, "BIO_new_fp");
+
+	if (!PEM_write_bio_X509(bio_out, xp))
+		errx(1, "PEM_write_bio_X509: unable to write cert");
+	
+	pclose(o_in);
+
+	X509_free(xp);
 	BIO_free(bio_out);
+
 	EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
 	ERR_remove_state(0);
@@ -93,7 +123,7 @@ main(int argc, char *argv[])
 
 extern char *__progname;
 
-static void __dead
+void __dead
 usage(void)
 {
 	(void)fprintf(stderr, "usage: %s filename\n", __progname);

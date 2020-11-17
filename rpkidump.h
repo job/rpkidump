@@ -15,6 +15,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-static void mft_print(const struct mft *);
+void mft_print(const struct mft *);
+void roa_print(const struct roa *);
+void cert_print(const struct cert *);
 
-static void __dead usage(void);
+void usage(void);

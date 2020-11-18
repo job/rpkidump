@@ -1,7 +1,6 @@
 /*	$Id: rpkidump.c,v 1.8 2020/11/16 21:16:32 job Exp $ */
 /*
  * Copyright (c) 2020 Job Snijders <job@openbsd.org>
- * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -71,13 +70,11 @@ main(int argc, char *argv[])
 	if ((ft = strrchr(argv[0], '.')) == NULL)
 		errx(1, "unknown RPKI file type or extension");
 
-	/* manifest */
 	if (strcmp(ft, ".mft") == 0) {
 		if ((m = mft_parse(&xp, argv[0])) == 0) {
 			errx(1, "mft_parse()");
 		} else {
 			mft_print(m);
-			printf("\n--\n");
 			mft_free(m);
 		}
 	} else if (strcmp(ft, ".roa") == 0) {
@@ -85,19 +82,19 @@ main(int argc, char *argv[])
 			errx(1, "roa_parse()");
 		} else {
 			roa_print(r);
-			printf("\n--\n");
 			roa_free(r);
 		}
 	} else if (strcmp(ft, ".cer") == 0) {
-		if ((c = cert_parse(&xp, argv[0], NULL)) == 0) {
-			errx(1, "cert_parse()");
-		} else {
+		if ((c = cert_parse_inner(&xp, argv[0], NULL, 0)) != 0) {
 			cert_print(c);
-			printf("\n--\n");
+			cert_free(c);
+		} else if ((c = cert_parse_inner(&xp, argv[0], NULL, 1)) != 0) {
+			cert_print(c);
 			cert_free(c);
 		}
 	}
 
+	printf("\n-- \n");
 	fflush(stdout);
 
 	o_in = popen("openssl x509 -text", "w");

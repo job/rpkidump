@@ -1,5 +1,6 @@
 /*	$Id: test-mft.c,v 1.8 2020/11/03 21:16:32 tb Exp $ */
 /*
+ * Copyright (c) 2020 Job Snijders <job@openbsd.org>
  * Copyright (c) 2019 Kristaps Dzonsons <kristaps@bsd.lv>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -32,13 +33,13 @@ mft_print(const struct mft *p)
 
 	assert(p != NULL);
 
-	printf("Subject key identifier: %s\n", p->ski);
+	printf("Subject key identifier:   %s\n", p->ski);
 	printf("Authority key identifier: %s\n", p->aki);
+	printf("\nManifest file listing:\n");
 	for (i = 0; i < p->filesz; i++) {
 		b64_ntop(p->files[i].hash, sizeof(p->files[i].hash),
 		    hash, sizeof(hash));
-		printf("%5zu: %s\n", i + 1, p->files[i].file);
-		printf("\thash %s\n", hash);
+		printf("SHA256 (%s) = %s\n", p->files[i].file, hash);
 	}
 }
 
@@ -50,13 +51,14 @@ roa_print(const struct roa *p)
 
 	assert(p != NULL);
 
-	printf("Subject key identifier: %s\n", p->ski);
+	printf("Subject key identifier:   %s\n", p->ski);
 	printf("Authority key identifier: %s\n", p->aki);
-	printf("asID: %" PRIu32 "\n", p->asid);
+	printf("\nasID: AS%" PRIu32 "\n", p->asid);
+	printf("Prefixes:\n");
 	for (i = 0; i < p->ipsz; i++) {
 		ip_addr_print(&p->ips[i].addr,
 			p->ips[i].afi, buf, sizeof(buf));
-		printf("%5zu: %s (max: %zu)\n", i + 1,
+		printf("%5zu: %s (maxlength: %zu)\n", i + 1,
 			buf, p->ips[i].maxlength);
 	}
 }
@@ -70,12 +72,13 @@ cert_print(const struct cert *p)
 
 	assert(p != NULL);
 
-	printf("Manifest: %s\n", p->mft);
-	if (p->crl != NULL)
-		printf("Revocation list: %s\n", p->crl);
-	printf("Subject key identifier: %s\n", p->ski);
+	printf("Subject key identifier:   %s\n", p->ski);
 	if (p->aki != NULL)
 		printf("Authority key identifier: %s\n", p->aki);
+	printf("Manifest:                 %s\n", p->mft);
+	if (p->crl != NULL)
+		printf("Revocation list:          %s\n", p->crl);
+	printf("\nSubordinate resources:\n");
 
 	for (i = 0; i < p->asz; i++)
 		switch (p->as[i].type) {
